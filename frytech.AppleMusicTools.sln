@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "frytech.AppleMusicTools.Downloader", "frytech.AppleMusicTools.Downloader\frytech.AppleMusicTools.Downloader.csproj", "{60F4BB39-7A82-4D3D-9AF5-B21252772D9A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "frytech.AppleMusicTools.Widevine", "frytech.AppleMusicTools.Widevine\frytech.AppleMusicTools.Widevine.csproj", "{B298CBE2-0800-4B2D-84BE-210F19100D4E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{60F4BB39-7A82-4D3D-9AF5-B21252772D9A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{60F4BB39-7A82-4D3D-9AF5-B21252772D9A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{60F4BB39-7A82-4D3D-9AF5-B21252772D9A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{60F4BB39-7A82-4D3D-9AF5-B21252772D9A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B298CBE2-0800-4B2D-84BE-210F19100D4E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B298CBE2-0800-4B2D-84BE-210F19100D4E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B298CBE2-0800-4B2D-84BE-210F19100D4E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B298CBE2-0800-4B2D-84BE-210F19100D4E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

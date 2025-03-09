@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <UserSecretsId>5acc3e2f-c47f-422d-8c79-7d2910eaa1ff</UserSecretsId>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="M3U8Parser" Version="1.0.5" />
+      <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.1" />
+      <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="device\" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\frytech.AppleMusicTools.Widevine\frytech.AppleMusicTools.Widevine.csproj" />
+    </ItemGroup>
+
+</Project>
