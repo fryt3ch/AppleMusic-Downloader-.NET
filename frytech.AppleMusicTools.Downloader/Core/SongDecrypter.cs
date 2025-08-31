@@ -2,11 +2,11 @@
 
 namespace frytech.AppleMusicTools.Downloader.Core;
 
-internal class SongDecryptor
+internal class SongDecrypter
 {
     private readonly string _mp4decryptPath;
 
-    public SongDecryptor(string mp4decryptPath)
+    public SongDecrypter(string mp4decryptPath)
     {
         _mp4decryptPath = mp4decryptPath;
     }

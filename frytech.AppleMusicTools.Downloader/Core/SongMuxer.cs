@@ -4,25 +4,39 @@ namespace frytech.AppleMusicTools.Downloader.Core;
 
 internal sealed class SongMuxer
 {
-    private readonly string _mp4BoxPath;
+    private readonly string _ffmpegPath;
 
-    public SongMuxer(string mp4BoxPath)
+    public SongMuxer(string ffmpegPath)
     {
-        _mp4BoxPath = mp4BoxPath;
+        _ffmpegPath = ffmpegPath;
     }
     
     public async Task MuxSongFile(string inputFilePath, string outputFilePath)
     {
         var psi = new ProcessStartInfo
         {
-            FileName = _mp4BoxPath,
-            ArgumentList = { "-add", inputFilePath, "-new", outputFilePath, },
+            FileName = _ffmpegPath,
             UseShellExecute = false,
-            CreateNoWindow = true,
+            CreateNoWindow = true
         };
 
-        using var proc = Process.Start(psi)!;
+        // Input files
+        psi.ArgumentList.Add("-i");
+        psi.ArgumentList.Add(inputFilePath);
 
+        // Copy audio without re-encoding, no video from original
+        psi.ArgumentList.Add("-vn");
+        psi.ArgumentList.Add("-c:a");
+        psi.ArgumentList.Add("copy");
+        
+        psi.ArgumentList.Add("-f");
+        psi.ArgumentList.Add("ipod");
+        
+        psi.ArgumentList.Add("-y");
+
+        psi.ArgumentList.Add(outputFilePath);
+
+        using var proc = Process.Start(psi)!;
         await proc.WaitForExitAsync();
     }
 }
