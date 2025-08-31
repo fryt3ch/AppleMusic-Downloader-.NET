@@ -11,16 +11,19 @@ public sealed class Downloader
 {
     private readonly AppleMusicClient _appleMusicClient;
     private readonly Device _device;
+    
+    private readonly SongDecrypter _songDecrypter;
+    private readonly SongMuxer _songMuxer;
     private readonly SongTagger _songTagger;
-    private readonly SongDecryptor _songDecryptor;
 
     public Downloader(AppleMusicClient appleMusicClient, Device device, DownloaderOptions options)
     {
         _appleMusicClient = appleMusicClient;
         _device = device;
 
-        _songTagger = new SongTagger(options.FfmpegPath);
-        _songDecryptor = new SongDecryptor(options.Mp4DecryptPath);
+        _songDecrypter = new SongDecrypter(options.Mp4DecryptPath);
+        _songMuxer = new SongMuxer(options.FfmpegPath);
+        _songTagger = new SongTagger(options.Mp4TagPath);
     }
 
     public async Task<MemoryStream> Download(string assetId, DownloadOptions? options = null)
@@ -70,21 +73,29 @@ public sealed class Downloader
         
         var songDecryptedFilePath = Path.GetTempFileName();
         
-        await _songDecryptor.DecryptSongFile(songEncryptedFilePath, songDecryptedFilePath, songDecryptKey);
+        await _songDecrypter.DecryptSongFile(songEncryptedFilePath, songDecryptedFilePath, songDecryptKey);
         
         File.Delete(songEncryptedFilePath);
         
         var songFilePath = Path.GetTempFileName();
-
-        var tagsDictionary = CreateTagsDictionary(metadata);
-        var artworkPath = options.IncludeArtwork ? await GetArtworkPath(asset) : null;
         
-        await _songTagger.MuxAndTagSongFile(songDecryptedFilePath, songFilePath, tagsDictionary, artworkPath);
+        await _songMuxer.MuxSongFile(songDecryptedFilePath, songFilePath);
         
         File.Delete(songDecryptedFilePath);
         
+        var taggedSongFilePath = Path.GetTempFileName();
+
+        var artworkPath = options.IncludeArtwork ? await GetArtworkPath(asset) : null;
+        var tagsDictionary = CreateTagsDictionary(metadata, artworkPath);
+        
+        await _songTagger.TagSongFile(songFilePath, taggedSongFilePath, tagsDictionary);
+        
         if (artworkPath is not null)
             File.Delete(artworkPath);
+        
+        File.Delete(songFilePath);
+
+        songFilePath = taggedSongFilePath;
         
         var finalSongStream = new MemoryStream(await File.ReadAllBytesAsync(songFilePath));
         
@@ -123,42 +134,47 @@ public sealed class Downloader
         return cdm.GetKeys().First().ToString();
     }
     
-    private IDictionary<string, string> CreateTagsDictionary(JsonElement metadata)
+    private IDictionary<string, string> CreateTagsDictionary(JsonElement metadata, string? coverPath = null)
     {
-        return new Dictionary<string, string>()
+        var tags = new Dictionary<string, string>()
         {
-            ["artist"] = metadata.GetProperty("artistName").GetString()!,
-            ["----:com.apple.iTunes:sortArtist"] = metadata.GetProperty("sort-artist").GetString()!,
+            ["Artist:S"] = metadata.GetProperty("artistName").GetString()!,
+            //["----:com.apple.iTunes:sortArtist"] = metadata.GetProperty("sort-artist").GetString()!,
 
-            ["title"] = metadata.GetProperty("itemName").GetString()!,
-            ["sort_name"] = metadata.GetProperty("sort-name").GetString()!,
+            ["Name:S"] = metadata.GetProperty("itemName").GetString()!,
+            //["sort_name"] = metadata.GetProperty("sort-name").GetString()!,
 
-            ["album"] = metadata.GetProperty("playlistName").GetString()!,
-            ["----:com.apple.iTunes:sortAlbum"] = metadata.GetProperty("sort-album").GetString()!,
+            ["Album:S"] = metadata.GetProperty("playlistName").GetString()!,
+            //["----:com.apple.iTunes:sortAlbum"] = metadata.GetProperty("sort-album").GetString()!,
 
-            ["composer"] = metadata.GetProperty("composerName").GetString()!,
-            ["writer"] = metadata.GetProperty("composerName").GetString()!,
-            ["sort_composer"] = metadata.GetProperty("sort-composer").GetString()!,
+            ["Composer:S"] = metadata.GetProperty("composerName").GetString()!,
+            ["Writer:S"] = metadata.GetProperty("composerName").GetString()!,
+            //["sort_composer"] = metadata.GetProperty("sort-composer").GetString()!,
 
-            ["album_artist"] = metadata.GetProperty("playlistArtistName").GetString()!,
-            ["sort_album_artist"] = metadata.GetProperty("playlistArtistName").GetString()!,
+            ["AlbumArtist:S"] = metadata.GetProperty("playlistArtistName").GetString()!,
+            //["sort_album_artist"] = metadata.GetProperty("playlistArtistName").GetString()!,
 
-            ["disk"] = $"{metadata.GetProperty("discNumber").GetInt32()}/{metadata.GetProperty("discCount").GetInt32()}",
-            ["tracknum"] = $"{metadata.GetProperty("trackNumber").GetInt32()}/{metadata.GetProperty("trackCount").GetInt32()}",
+            ["Disc:B"] = BuildBinaryAtom(metadata.GetProperty("discNumber").GetInt32(), metadata.GetProperty("discCount").GetInt32()).ToHexString(),
+            ["Track:B"] = BuildBinaryAtom(metadata.GetProperty("trackNumber").GetInt32(), metadata.GetProperty("trackCount").GetInt32()).ToHexString(),
 
-            ["genre"] = metadata.GetProperty("genre").GetString()!,
-            ["copyright"] = metadata.GetProperty("copyright").GetString()!,
-            ["created"] = metadata.GetProperty("releaseDate").GetDateTime().ToString("yyyy-MM-dd"),
-            ["----:com.apple.iTunes:compilation"] = metadata.GetProperty("compilation").GetBoolean() ? "yes" : "no",
-            ["----:com.apple.iTunes:gapless"] = metadata.GetProperty("gapless").GetBoolean() ? "yes" : "no",
-            ["rating"] = metadata.GetProperty("explicit").ToString() == "1" ? "4" : "0", // clean = 2
-            ["media"] = "1", // normal
-            ["online_info"] =$"https://music.apple.com/song/{metadata.GetProperty("itemId").GetString()}",
+            ["GenreName:S"] = metadata.GetProperty("genre").GetString()!,
+            ["Copyright:S"] = metadata.GetProperty("copyright").GetString()!,
+            ["Date:S"] = metadata.GetProperty("releaseDate").GetDateTime().ToString("yyyy-MM-dd"),
+            ["Compilation:I8"] = metadata.GetProperty("compilation").GetBoolean() ? "1" : "0",
+            ["IsGapless:I8"] = metadata.GetProperty("gapless").GetBoolean() ? "1" : "0",
+            ["Rating:I8"] = metadata.GetProperty("explicit").ToString() == "1" ? "4" : "0", // clean = 2
+            //["media"] = "1", // normal
+            ["InfoUrl:S"] =$"https://music.apple.com/song/{metadata.GetProperty("itemId").GetString()}",
             //["url"] =$"https://music.apple.com/song/{metadata.GetProperty("itemId").GetString()}",
-            ["publisher"] = "Apple Music",
-            ["tool"] = "Apple Music",
-            ["encoder"] = "frytech",
+            //["publisher"] = "Apple Music",
+            ["Tool:S"] = "Apple Music Downloader by frytech",
+            //["encoder"] = "frytech",
         };
+
+        if (!string.IsNullOrWhiteSpace(coverPath))
+            tags["Cover:JPEG"] = coverPath;
+
+        return tags;
     }
 
     private async Task<string> GetArtworkPath(JsonElement asset)
@@ -171,5 +187,10 @@ public sealed class Downloader
         await artworkStream.WriteToFileAsync(artworkPath);
 
         return artworkPath;
+    }
+    
+    private static byte[] BuildBinaryAtom(int number, int total)
+    {
+        return [0x00, 0x00, 0x00, (byte)number, 0x00, (byte)total, 0x00, 0x00];
     }
 }
