@@ -164,7 +164,8 @@ public sealed class Downloader
             ["IsGapless:I8"] = metadata.GetProperty("gapless").GetBoolean() ? "1" : "0",
             ["Rating:I8"] = metadata.GetProperty("explicit").ToString() == "1" ? "4" : "0", // clean = 2
             //["media"] = "1", // normal
-            ["InfoUrl:S"] =$"https://music.apple.com/song/{metadata.GetProperty("itemId").GetString()}",
+            ["Comment:S"] = $"https://music.apple.com/song/{metadata.GetProperty("itemId").GetString()!}",
+            ["StoreFrontID:I32"] = metadata.GetProperty("itemId").GetString()!,
             //["url"] =$"https://music.apple.com/song/{metadata.GetProperty("itemId").GetString()}",
             //["publisher"] = "Apple Music",
             ["Tool:S"] = "Apple Music Downloader by frytech",

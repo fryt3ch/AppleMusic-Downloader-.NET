@@ -7,7 +7,7 @@
         <Title>AppleMusic Downloader</Title>
         <Description>AppleMusic Downloader Library</Description>
         <RepositoryUrl>https://github.com/fryt3ch/AppleMusic-Downloader-.NET</RepositoryUrl>
-        <Version>1.0.6</Version>
+        <Version>1.0.7</Version>
     </PropertyGroup>
 
     <ItemGroup>
