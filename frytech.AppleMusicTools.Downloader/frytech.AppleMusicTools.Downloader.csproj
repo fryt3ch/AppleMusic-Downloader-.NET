@@ -7,7 +7,7 @@
         <Title>AppleMusic Downloader</Title>
         <Description>AppleMusic Downloader Library</Description>
         <RepositoryUrl>https://github.com/fryt3ch/AppleMusic-Downloader-.NET</RepositoryUrl>
-        <Version>1.0.1</Version>
+        <Version>1.0.2</Version>
     </PropertyGroup>
 
     <ItemGroup>
@@ -17,7 +17,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\frytech.AppleMusicTools.Widevine\frytech.AppleMusicTools.Widevine.csproj" Pack="true" PrivateAssets="all" />
+      <ProjectReference Include="..\frytech.AppleMusicTools.Widevine\frytech.AppleMusicTools.Widevine.csproj"/>
     </ItemGroup>
 
 </Project>

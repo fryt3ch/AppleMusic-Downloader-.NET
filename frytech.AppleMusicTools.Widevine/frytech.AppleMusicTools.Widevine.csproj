@@ -4,6 +4,10 @@
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <Title>AppleMusic Widevine</Title>
+        <Description>AppleMusic Widevine Library</Description>
+        <RepositoryUrl>https://github.com/fryt3ch/AppleMusic-Downloader-.NET</RepositoryUrl>
+        <Version>1.0.0</Version>
     </PropertyGroup>
 
     <ItemGroup>
