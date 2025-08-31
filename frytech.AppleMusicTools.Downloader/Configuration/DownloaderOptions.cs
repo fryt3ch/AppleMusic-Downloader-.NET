@@ -2,7 +2,7 @@
 
 public class DownloaderOptions
 {
-    public required string Mp4BoxPath { get; set; }
+    public required string FfmpegPath { get; set; }
 
     public required string Mp4DecryptPath { get; set; }
 }
