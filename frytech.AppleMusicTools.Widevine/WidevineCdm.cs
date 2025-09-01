@@ -1,23 +1,28 @@
-﻿using System.Text;
-using frytech.AppleMusicTools.Widevine.Core;
+﻿using frytech.AppleMusicTools.Widevine.Core;
+using frytech.AppleMusicTools.Widevine.Core.Devices;
+using frytech.AppleMusicTools.Widevine.Models;
 using ProtoBuf;
 
 namespace frytech.AppleMusicTools.Widevine;
 
-public class CDM
+/// <summary>
+/// Content Decryption Module <c>Widevine</c>.
+/// </summary>
+/// <seealso href="https://www.widevine.com/"/>
+public sealed class WidevineCdm
 {
-    public Device Device { get; }
+    public WidevineDevice Device { get; }
     
-    private Session Session => _session ??= CreateSession();
+    private WidevineSession Session => _session ??= CreateSession();
     
-    private Session? _session;
+    private WidevineSession? _session;
     
     private readonly string _initDataBase64;
     private readonly string? _certDataBase64;
     private readonly bool _offline;
     private readonly bool _raw;
 
-    public CDM(Device device, string initDataBase64, string? certDataBase64 = null, bool offline = false, bool raw = false)
+    public WidevineCdm(WidevineDevice device, string initDataBase64, string? certDataBase64 = null, bool offline = false, bool raw = false)
     {
         Device = device;
         
@@ -25,11 +30,6 @@ public class CDM
         _certDataBase64 = certDataBase64;
         _offline = offline;
         _raw = raw;
-    }
-    
-    public CDM(byte[] clientIdBytes, byte[] privateKeyBytes, string initDataBase64, string? certDataBase64 = null, bool offline = false, bool raw = false)
-        : this(new Device(clientIdBytes, privateKeyBytes), initDataBase64, certDataBase64, offline, raw)
-    {
     }
 
     public byte[] GetChallenge()
@@ -47,50 +47,26 @@ public class CDM
         return Session.ContentKeys.ToArray();
     }
 
-    private Session CreateSession()
+    private WidevineSession CreateSession()
     {
         var initData = CheckPssh(_initDataBase64);
-        
-        var sessionId = new byte[16];
+        var sessionId = Device.GenerateSessionId();
 
-        if (Device.IsAndroid)
-        {
-            var randHex = new StringBuilder();
-
-            var rand = new Random();
-            const string choice = "ABCDEF0123456789";
-                
-            for (var i = 0; i < 16; i++)
-                randHex.Append(choice[rand.Next(16)]);
-
-            const string counter = "01";
-            const string rest = "00000000000000";
-                
-            sessionId = Encoding.ASCII.GetBytes(randHex + counter + rest);
-        }
-        else
-        {
-            var rand = new Random();
-                
-            rand.NextBytes(sessionId);
-        }
-
-        Session session;
-            
+        WidevineSession session;
         
         if (_raw)
         {
-            session = new Session(sessionId, null, initData, Device, _offline);
+            session = new WidevineSession(sessionId, null, initData, Device, _offline);
         }
         else
         {
             var parsedInitData = ParseInitData(initData);
             
-            session = new Session(sessionId, parsedInitData, null, Device, _offline);
+            session = new WidevineSession(sessionId, parsedInitData, null, Device, _offline);
         }
         
         if (!string.IsNullOrEmpty(_certDataBase64))
-            session.SetServiceCertificate(Convert.FromBase64String(_certDataBase64));
+            session.TrySetServiceCertificate(Convert.FromBase64String(_certDataBase64));
         
         return session;
     }
@@ -127,7 +103,7 @@ public class CDM
         return pssh;
     }
 
-    private static WidevineCencHeader ParseInitData(byte[] initData)
+    private WidevineCencHeader ParseInitData(byte[] initData)
     {
         WidevineCencHeader cencHeader;
 

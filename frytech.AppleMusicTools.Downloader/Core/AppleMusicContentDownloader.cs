@@ -4,22 +4,23 @@ using frytech.AppleMusicTools.Downloader.Configuration;
 using frytech.AppleMusicTools.Downloader.Extensions;
 using frytech.AppleMusicTools.Widevine;
 using frytech.AppleMusicTools.Widevine.Core;
+using frytech.AppleMusicTools.Widevine.Core.Devices;
 
 namespace frytech.AppleMusicTools.Downloader.Core;
 
 public sealed class AppleMusicContentDownloader
 {
     private readonly AppleMusicClient _appleMusicClient;
-    private readonly Device _device;
+    private readonly WidevineDevice _widevineDevice;
     
     private readonly SongDecrypter _songDecrypter;
     private readonly SongMuxer _songMuxer;
     private readonly SongTagger _songTagger;
 
-    public AppleMusicContentDownloader(AppleMusicClient appleMusicClient, Device device, AppleMusicContentDownloaderOptions options)
+    public AppleMusicContentDownloader(AppleMusicClient appleMusicClient, WidevineDevice widevineDevice, AppleMusicContentDownloaderOptions options)
     {
         _appleMusicClient = appleMusicClient;
-        _device = device;
+        _widevineDevice = widevineDevice;
 
         _songDecrypter = new SongDecrypter(options.Mp4DecryptPath);
         _songMuxer = new SongMuxer(options.FfmpegPath);
@@ -129,7 +130,7 @@ public sealed class AppleMusicContentDownloader
             pssh = Convert.ToBase64String(ms.ToArray());
         }
         
-        var cdm = new CDM(_device, pssh, certDataBase64);
+        var cdm = new WidevineCdm(_widevineDevice, pssh, certDataBase64);
         
         var challenge = Convert.ToBase64String(cdm.GetChallenge());
         
