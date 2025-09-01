@@ -1,8 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "frytech.AppleMusicTools.Downloader", "frytech.AppleMusicTools.Downloader\frytech.AppleMusicTools.Downloader.csproj", "{60F4BB39-7A82-4D3D-9AF5-B21252772D9A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "frytech.AppleMusicTools.Downloader", "src\frytech.AppleMusicTools.Downloader\frytech.AppleMusicTools.Downloader.csproj", "{60F4BB39-7A82-4D3D-9AF5-B21252772D9A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "frytech.AppleMusicTools.Widevine", "frytech.AppleMusicTools.Widevine\frytech.AppleMusicTools.Widevine.csproj", "{B298CBE2-0800-4B2D-84BE-210F19100D4E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "frytech.AppleMusicTools.Widevine", "src\frytech.AppleMusicTools.Widevine\frytech.AppleMusicTools.Widevine.csproj", "{B298CBE2-0800-4B2D-84BE-210F19100D4E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

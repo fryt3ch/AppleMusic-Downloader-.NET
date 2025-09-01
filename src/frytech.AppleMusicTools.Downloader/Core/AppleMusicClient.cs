@@ -5,7 +5,7 @@ using frytech.AppleMusicTools.Downloader.Configuration;
 
 namespace frytech.AppleMusicTools.Downloader.Core;
 
-public class AppleMusicClient
+public sealed class AppleMusicClient
 {
     public HttpClient Client { get; }
 
@@ -31,11 +31,9 @@ public class AppleMusicClient
 
         response.EnsureSuccessStatusCode();
 
-        var responseJsonElement = await JsonSerializer.DeserializeAsync<JsonElement>(await response.Content.ReadAsStreamAsync());
+        var webPlayback = await JsonSerializer.DeserializeAsync<JsonElement>(await response.Content.ReadAsStreamAsync());
 
-        var songElement = responseJsonElement.GetProperty("songList").EnumerateArray().First();
-
-        return songElement;
+        return webPlayback;
     }
     
     public async Task<string> GetLicense(string licenceUrl, string assetId, string keyUri, string challenge)

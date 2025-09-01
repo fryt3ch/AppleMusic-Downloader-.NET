@@ -1,12 +1,14 @@
 ﻿using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using frytech.AppleMusicTools.Widevine.Core.Devices;
+using frytech.AppleMusicTools.Widevine.Models;
 using frytech.AppleMusicTools.Widevine.Utils;
 using ProtoBuf;
 
 namespace frytech.AppleMusicTools.Widevine.Core;
 
-internal class Session
+internal sealed class WidevineSession
 {
     public byte[] SessionId { get; set; }
     
@@ -16,7 +18,7 @@ internal class Session
     
     public bool Offline { get; set; }
     
-    public Device Device { get; set; }
+    public WidevineDevice Device { get; set; }
     
     public byte[] SessionKey { get; set; }
     
@@ -30,9 +32,9 @@ internal class Session
     
     public bool PrivacyMode { get; set; }
     
-    public List<ContentKey> ContentKeys { get; set; } = new List<ContentKey>();
+    public List<ContentKey> ContentKeys { get; set; } = [];
 
-    public Session(byte[] sessionId, WidevineCencHeader? parsedInitData, byte[]? initData, Device device, bool offline)
+    public WidevineSession(byte[] sessionId, WidevineCencHeader? parsedInitData, byte[]? initData, WidevineDevice device, bool offline)
     {
         SessionId = sessionId;
         InitData = initData;
@@ -44,7 +46,7 @@ internal class Session
     public byte[] GetLicenseRequest()
     {
         dynamic licenseRequest;
-        var requestTime = uint.Parse((DateTime.Now - DateTime.UnixEpoch).TotalSeconds.ToString()
+        var requestTime = uint.Parse((DateTime.Now - DateTime.UnixEpoch).TotalSeconds.ToString(CultureInfo.InvariantCulture)
             .Split(CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator)[0]);
 
         if (ParsedInitData is not null)
@@ -98,23 +100,23 @@ internal class Session
         {
             var encryptedClientIdProto = new EncryptedClientIdentification();
 
-            using var memoryStream = new MemoryStream();
-            Serializer.Serialize(memoryStream, Device.ClientId);
-            byte[] data = CryptoPaddingUtils.AddPKCS7Padding(memoryStream.ToArray(), 16);
+            using var clientIdStream = new MemoryStream();
+            Serializer.Serialize(clientIdStream, Device.ClientId);
+            var data = CryptoUtils.AddPKCS7Padding(clientIdStream.ToArray(), 16);
 
             var aes = Aes.Create();
             aes.BlockSize = 128;
             aes.Padding = PaddingMode.PKCS7;
             aes.Mode = CipherMode.CBC;
 
-            using var mstream = new MemoryStream();
-            using var cryptoStream = new CryptoStream(mstream, aes.CreateEncryptor(aes.Key, aes.IV), CryptoStreamMode.Write);
+            using var memoryStream = new MemoryStream();
+            using var cryptoStream = new CryptoStream(memoryStream, aes.CreateEncryptor(aes.Key, aes.IV), CryptoStreamMode.Write);
             cryptoStream.Write(data, 0, data.Length);
-            encryptedClientIdProto.EncryptedClientId = mstream.ToArray();
+            encryptedClientIdProto.EncryptedClientId = memoryStream.ToArray();
 
-            using var RSA = new RSACryptoServiceProvider();
-            RSA.ImportRSAPublicKey(ServiceCertificate.DeviceCertificate.PublicKey, out _);
-            encryptedClientIdProto.EncryptedPrivacyKey = RSA.Encrypt(aes.Key, RSAEncryptionPadding.OaepSHA1);
+            using var rsa = new RSACryptoServiceProvider();
+            rsa.ImportRSAPublicKey(ServiceCertificate.DeviceCertificate.PublicKey, out _);
+            encryptedClientIdProto.EncryptedPrivacyKey = rsa.Encrypt(aes.Key, RSAEncryptionPadding.OaepSHA1);
             encryptedClientIdProto.EncryptedClientIdIv = aes.IV;
             encryptedClientIdProto.ServiceId = Encoding.UTF8.GetString(ServiceCertificate.DeviceCertificate.ServiceId);
             encryptedClientIdProto.ServiceCertificateSerialNumber = ServiceCertificate.DeviceCertificate.SerialNumber;
@@ -129,7 +131,7 @@ internal class Session
         using (var memoryStream = new MemoryStream())
         {
             Serializer.Serialize(memoryStream, licenseRequest.Msg);
-            byte[] data = memoryStream.ToArray();
+            var data = memoryStream.ToArray();
             LicenseRequestBytes = data;
 
             licenseRequest.Signature = Device.Sign(data);
@@ -160,13 +162,13 @@ internal class Session
             var sessionKey = Device.Decrypt(License.SessionKey);
 
             if (sessionKey.Length != 16)
-                throw new Exception("Unable to decrypt session key");
+                throw new InvalidOperationException("Unable to decrypt session key");
 
             SessionKey = sessionKey;
         }
         catch
         {
-            throw new Exception("Unable to decrypt session key");
+            throw new InvalidOperationException("Unable to decrypt session key");
         }
         
         DerivedKeys = DeriveKeys(LicenseRequestBytes, SessionKey);
@@ -181,7 +183,7 @@ internal class Session
         var hmacHash = CryptoUtils.GetHMACSHA256Digest(licenseBytes, DerivedKeys.Auth1);
 
         if (!hmacHash.SequenceEqual(License.Signature))
-            throw new Exception("License signature mismatch");
+            throw new InvalidOperationException("License signature mismatch");
 
         foreach (var key in License.Msg.Keys)
         {
@@ -193,17 +195,15 @@ internal class Session
             var keyId = key.Id ?? Encoding.ASCII.GetBytes(key.Type.ToString());
             var encryptedKey = key.Key;
             var iv = key.Iv;
-
-            byte[] decryptedKey;
-
-            using var mstream = new MemoryStream();
+            
+            using var memoryStream = new MemoryStream();
             using var aes = Aes.Create();
             aes.Mode = CipherMode.CBC;
             aes.Padding = PaddingMode.PKCS7;
 
-            using var cryptoStream = new CryptoStream(mstream, aes.CreateDecryptor(DerivedKeys.Enc, iv), CryptoStreamMode.Write);
+            using var cryptoStream = new CryptoStream(memoryStream, aes.CreateDecryptor(DerivedKeys.Enc, iv), CryptoStreamMode.Write);
             cryptoStream.Write(encryptedKey, 0, encryptedKey.Length);
-            decryptedKey = mstream.ToArray();
+            var decryptedKey = memoryStream.ToArray();
 
             var permissions = new List<string>();
             
@@ -226,7 +226,7 @@ internal class Session
         }
     }
     
-    public bool SetServiceCertificate(byte[] certData)
+    public bool TrySetServiceCertificate(byte[] certData)
     {
         SignedMessage signedMessage;
 

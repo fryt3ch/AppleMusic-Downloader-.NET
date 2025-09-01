@@ -2,7 +2,7 @@
 
 namespace frytech.AppleMusicTools.Downloader.Core;
 
-internal class SongDecrypter
+internal sealed class SongDecrypter
 {
     private readonly string _mp4decryptPath;
 
@@ -22,7 +22,6 @@ internal class SongDecrypter
         };
 
         using var proc = Process.Start(psi)!;
-
         await proc.WaitForExitAsync();
     }
 }
