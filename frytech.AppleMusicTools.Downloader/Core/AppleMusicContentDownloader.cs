@@ -7,7 +7,7 @@ using frytech.AppleMusicTools.Widevine.Core;
 
 namespace frytech.AppleMusicTools.Downloader.Core;
 
-public sealed class Downloader
+public sealed class AppleMusicContentDownloader
 {
     private readonly AppleMusicClient _appleMusicClient;
     private readonly Device _device;
@@ -16,7 +16,7 @@ public sealed class Downloader
     private readonly SongMuxer _songMuxer;
     private readonly SongTagger _songTagger;
 
-    public Downloader(AppleMusicClient appleMusicClient, Device device, DownloaderOptions options)
+    public AppleMusicContentDownloader(AppleMusicClient appleMusicClient, Device device, AppleMusicContentDownloaderOptions options)
     {
         _appleMusicClient = appleMusicClient;
         _device = device;
@@ -26,23 +26,28 @@ public sealed class Downloader
         _songTagger = new SongTagger(options.Mp4TagPath);
     }
 
-    public async Task<MemoryStream> Download(string assetId, DownloadOptions? options = null)
+    public async Task<MemoryStream> DownloadContent(string assetId, ContentDownloadOptions? options = null)
     {
-        options ??= new DownloadOptions();
+        options ??= new ContentDownloadOptions();
         
         var webPlayback = await _appleMusicClient.GetWebPlayback(assetId);
 
-        if (webPlayback.TryGetProperty("hls-playlist-url", out var playlistUrl))
+        if (!webPlayback.TryGetProperty("songList", out var songListElement) || songListElement.GetArrayLength() == 0)
+            throw new InvalidOperationException("No song was found!");
+
+        var songElement = songListElement[0];
+        
+        if (songElement.TryGetProperty("hls-playlist-url", out _))
             throw new NotSupportedException("Videos are not supported!");
         
-        return await DownloadSong(assetId, webPlayback, options);
+        return await DownloadSong(assetId, songElement, options);
     }
 
-    private async Task<MemoryStream> DownloadSong(string assetId, JsonElement webPlayback, DownloadOptions options)
+    private async Task<MemoryStream> DownloadSong(string assetId, JsonElement songElement, ContentDownloadOptions options)
     {
-        var licenseUrl = webPlayback.GetProperty("hls-key-server-url").GetString()!;
+        var licenseUrl = songElement.GetProperty("hls-key-server-url").GetString()!;
         
-        if (!webPlayback.TryGetProperty("assets", out var assets))
+        if (!songElement.TryGetProperty("assets", out var assets))
             throw new InvalidOperationException("Something went wrong!");
         
         var asset = assets.EnumerateArray()
@@ -106,7 +111,7 @@ public sealed class Downloader
 
     private async Task<string> GetSongDecryptKey(string licenceUrl, string songId, string keyUri)
     {
-        var certDataBase64 = await _appleMusicClient.GetLicense(licenceUrl, songId, keyUri, "CAQ=");
+        var certDataBase64 = await _appleMusicClient.GetLicense(licenceUrl, songId, keyUri, challenge: "CAQ=");
 
         string pssh;
         
@@ -116,6 +121,7 @@ public sealed class Downloader
             {
                 algorithm = WidevineCencHeader.Algorithm.Aesctr
             };
+            
             dataPssh.KeyIds.Add(Encoding.UTF8.GetBytes(keyUri.Split(',').Skip(1).First()));
             
             ProtoBuf.Serializer.Serialize(ms, dataPssh);
@@ -139,20 +145,13 @@ public sealed class Downloader
         var tags = new Dictionary<string, string>()
         {
             ["Artist:S"] = metadata.GetProperty("artistName").GetString()!,
-            //["----:com.apple.iTunes:sortArtist"] = metadata.GetProperty("sort-artist").GetString()!,
-
             ["Name:S"] = metadata.GetProperty("itemName").GetString()!,
-            //["sort_name"] = metadata.GetProperty("sort-name").GetString()!,
-
+            
             ["Album:S"] = metadata.GetProperty("playlistName").GetString()!,
-            //["----:com.apple.iTunes:sortAlbum"] = metadata.GetProperty("sort-album").GetString()!,
-
+            ["AlbumArtist:S"] = metadata.GetProperty("playlistArtistName").GetString()!,
+            
             ["Composer:S"] = metadata.GetProperty("composerName").GetString()!,
             ["Writer:S"] = metadata.GetProperty("composerName").GetString()!,
-            //["sort_composer"] = metadata.GetProperty("sort-composer").GetString()!,
-
-            ["AlbumArtist:S"] = metadata.GetProperty("playlistArtistName").GetString()!,
-            //["sort_album_artist"] = metadata.GetProperty("playlistArtistName").GetString()!,
 
             ["Disc:B"] = BuildBinaryAtom(metadata.GetProperty("discNumber").GetInt32(), metadata.GetProperty("discCount").GetInt32()).ToHexString(),
             ["Track:B"] = BuildBinaryAtom(metadata.GetProperty("trackNumber").GetInt32(), metadata.GetProperty("trackCount").GetInt32()).ToHexString(),
@@ -163,13 +162,9 @@ public sealed class Downloader
             ["Compilation:I8"] = metadata.GetProperty("compilation").GetBoolean() ? "1" : "0",
             ["IsGapless:I8"] = metadata.GetProperty("gapless").GetBoolean() ? "1" : "0",
             ["Rating:I8"] = metadata.GetProperty("explicit").ToString() == "1" ? "4" : "0", // clean = 2
-            //["media"] = "1", // normal
             ["Comment:S"] = $"https://music.apple.com/song/{metadata.GetProperty("itemId").GetString()!}",
             ["StoreFrontID:I32"] = metadata.GetProperty("itemId").GetString()!,
-            //["url"] =$"https://music.apple.com/song/{metadata.GetProperty("itemId").GetString()}",
-            //["publisher"] = "Apple Music",
             ["Tool:S"] = "Apple Music Downloader by frytech",
-            //["encoder"] = "frytech",
         };
 
         if (!string.IsNullOrWhiteSpace(coverPath))
@@ -181,7 +176,6 @@ public sealed class Downloader
     private async Task<string> GetArtworkPath(JsonElement asset)
     {
         var artworkUrl = asset.GetProperty("artworkURL").GetString()!;
-
         var artworkStream = await _appleMusicClient.Client.GetStreamAsync(artworkUrl);
 
         var artworkPath = Path.GetTempFileName();

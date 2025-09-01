@@ -19,8 +19,7 @@ internal sealed class SongMuxer
             UseShellExecute = false,
             CreateNoWindow = true
         };
-
-        // Input files
+        
         psi.ArgumentList.Add("-i");
         psi.ArgumentList.Add(inputFilePath);
 
@@ -29,6 +28,7 @@ internal sealed class SongMuxer
         psi.ArgumentList.Add("-c:a");
         psi.ArgumentList.Add("copy");
         
+        // M4A output format
         psi.ArgumentList.Add("-f");
         psi.ArgumentList.Add("ipod");
         
