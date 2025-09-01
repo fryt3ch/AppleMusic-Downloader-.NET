@@ -3,7 +3,6 @@ using System.Text.Json;
 using frytech.AppleMusicTools.Downloader.Configuration;
 using frytech.AppleMusicTools.Downloader.Extensions;
 using frytech.AppleMusicTools.Widevine;
-using frytech.AppleMusicTools.Widevine.Core;
 using frytech.AppleMusicTools.Widevine.Core.Devices;
 
 namespace frytech.AppleMusicTools.Downloader.Core;
