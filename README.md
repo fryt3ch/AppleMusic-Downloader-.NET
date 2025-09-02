@@ -41,12 +41,11 @@ Configure the library with Apple Music tokens, Widevine keys, and external tool 
 {
   "AppleMusic": {
     "ApiToken": "your_api_token_here",
-    "MediaToken": "your_media_token_here",
-    "StoreApiUrl": "https://api.music.apple.com"
+    "MediaToken": "your_media_token_here"
   },
   "AppleMusicDownloader": {
     "DeviceClientIdFilePath": "path/to/client_id.bin",
-    "DevicePrivateKeyFilePath": "path/to/private_key.bin",
+    "DevicePrivateKeyFilePath": "path/to/private_key.pem",
     "FfmpegPath": "path/to/ffmpeg",
     "Mp4DecryptPath": "path/to/mp4decrypt",
     "Mp4TagPath": "path/to/mp4tag"
@@ -140,7 +139,7 @@ using (var fileStream = File.Create(fileName))
 Console.WriteLine($"Song downloaded: {fileName}");
 ```
 
-In this example we download song ``https://music.apple.com/kz/song/dream-on/1442858650`` using `AppleMusicContentDownloader` to download, decrypt (via `mp4decrypt`), tag (via `mp4tag`), and mux (via `FFmpeg`) the song into `.m4a` format.
+In this example we download song ``https://music.apple.com/kz/song/dream-on/1442858650`` using `AppleMusicContentDownloader`.
 
 ## Troubleshooting
 - **Missing Tools**: Verify that `mp4decrypt`, `mp4tag`, and `FFmpeg` are installed and their paths are correctly configured.
